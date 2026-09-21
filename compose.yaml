@@ -1,0 +1,63 @@
+services:
+  decision-service:
+    build:
+      context: ./decision-service
+    environment:
+      DECISION_HOST: 0.0.0.0
+      DECISION_PORT: "8081"
+      POLICY_REGISTRY_URL: http://policy-registry:8082
+      POLICY_REFRESH_ENABLED: "false"
+      POLICY_REFRESH_INTERVAL: 30s
+      POLICY_REFRESH_TIMEOUT: 200ms
+      POLICY_MAX_PAGES: "16"
+      POLICY_MAX_BYTES: "1048576"
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8081/health/ready"]
+      interval: 2s
+      timeout: 1s
+      retries: 20
+
+  decision-gateway:
+    build:
+      context: ./decision-gateway
+    environment:
+      GATEWAY_HOST: 0.0.0.0
+      GATEWAY_PORT: "8080"
+      DECISION_SERVICE_URL: http://decision-service:8081
+      GATEWAY_UPSTREAM_TIMEOUT: 2s
+      GATEWAY_MAX_RESPONSE_BYTES: "1048576"
+    ports:
+      - "8080:8080"
+    depends_on:
+      decision-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/health/ready"]
+      interval: 2s
+      timeout: 1s
+      retries: 20
+
+  policy-registry:
+    build:
+      context: ./policy-registry
+    profiles: ["refresh"]
+    environment:
+      REGISTRY_HOST: 0.0.0.0
+      REGISTRY_PORT: "8082"
+      REGISTRY_PROFILE: valid-v2
+      REGISTRY_ENABLE_FIXTURE_ADMIN: "true"
+    ports:
+      - "8082:8082"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8082/health/ready', timeout=1)",
+        ]
+      interval: 2s
+      timeout: 1s
+      retries: 20

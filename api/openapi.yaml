@@ -1,0 +1,70 @@
+openapi: 3.1.0
+info:
+  title: Policy Decision API
+  version: 1.0.0
+paths:
+  /v1/decisions:
+    post:
+      operationId: evaluateDecision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      responses:
+        '200':
+          description: Policy decision
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    DecisionRequest:
+      type: object
+      additionalProperties: false
+      required: [subject_id, operation, region]
+      properties:
+        subject_id:
+          type: string
+          minLength: 1
+        operation:
+          type: string
+          minLength: 1
+        region:
+          type: string
+          minLength: 1
+    DecisionResponse:
+      type: object
+      additionalProperties: false
+      required: [decision, policy_revision]
+      properties:
+        decision:
+          type: string
+          enum: [allow, deny]
+        matched_rule_id:
+          type: string
+        policy_revision:
+          type: integer
+          minimum: 0
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string

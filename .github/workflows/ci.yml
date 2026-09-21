@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decision service tests
+        run: docker build --target test -t policy-snapshot-decision-test ./decision-service
+      - name: Gateway tests
+        run: docker build --target test -t policy-snapshot-gateway-test ./decision-gateway
+      - name: Registry tests
+        run: docker build --target test -t policy-snapshot-registry-test ./policy-registry
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start services
+        run: docker compose --profile refresh up --build -d --wait --wait-timeout 60
+      - name: Run black-box tests
+        run: python3 -m unittest discover -s integration-tests -p 'test_*.py'
+      - name: Show service logs on failure
+        if: failure()
+        run: docker compose --profile refresh logs
+      - name: Stop services
+        if: always()
+        run: docker compose --profile refresh down --remove-orphans
